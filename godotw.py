@@ -121,10 +121,12 @@ def get_platform_names() -> list[str]:
 
 platform_names = get_platform_names()
 
-management_dir.joinpath("godots").mkdir(parents=True, exist_ok=True)
-godot_names = os.listdir(management_dir.joinpath("godots"))
+default_godot_repository = management_dir.joinpath("godots")
+default_godot_repository.mkdir(parents=True, exist_ok=True)
+repos = reversed([default_godot_repository] + [Path(i) for i in management_toml["godot"]["repositories"]])
+godot_names: list[tuple[Path,str]] = sum([[(i,j) for j in os.listdir(i)] for i in repos], [])
 
-available_godots = [name for name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
+available_godots = [(repo, name) for repo, name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
 
 if not available_godots:
     print(f"No available godot found for version {godot_version} and platform {platform_names}")
@@ -135,7 +137,7 @@ if not available_godots:
 
         name = f"Godot_v{godot_version}-{godot_release_status}{'_mono' if is_required_mono else ''}_{platform_names[0 if not is_required_mono else -1]}"
         url = f"https://github.com/godotengine/godot/releases/download/{godot_version}-{godot_release_status}/{name}.zip"
-        dirpath = management_dir.joinpath("godots")
+        dirpath = default_godot_repository
         zippath = Path(dirpath).joinpath(f"{name}.zip")
         godotpath = Path(dirpath).joinpath(f"{name}")
 
@@ -154,10 +156,12 @@ if not available_godots:
         print(f"If you want install godot, please run 'godotw --install'")
     sys.exit(1)
 
-chosen_godot = available_godots[-1]
+chosen_godot_repo, chosen_godot = available_godots[-1]
 
-godot_path = management_dir.joinpath(f"godots/{chosen_godot}/{chosen_godot}.exe")
-godot_dir = management_dir.joinpath(f"godots/{chosen_godot}")
+godot_path = chosen_godot_repo.joinpath(f"{chosen_godot}").joinpath(f"{chosen_godot}.exe")
+godot_dir = chosen_godot_repo.joinpath(f"{chosen_godot}")
+
+print(f"Chosen godot: {godot_path}")
 
 def setup_symlink():
     Path("./.godotw").mkdir(parents=True, exist_ok=True)
