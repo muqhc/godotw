@@ -1,0 +1,4 @@
+[godot]
+version = "4.6"             # required
+mono-required = false       # optional, default is false
+release-status = "stable"   # optional, default is "stable"
