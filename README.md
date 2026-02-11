@@ -24,8 +24,11 @@ release-status = "stable"   # optional, default is "stable"
 
 ### commands
 
+you can use godot.bat or godot.sh 
+
 general options:
 
+- [--local]: use local godot management directory (./.godotw) (default: (USERPROFILE)/.godotw)
 - [--install]: install godot from github before executing
 
 commands:

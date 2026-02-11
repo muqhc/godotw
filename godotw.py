@@ -16,13 +16,80 @@ from pathlib import Path
 import sys
 import subprocess
 import json
+import re
+
+def process_data(v: Any) -> str:
+    if isinstance(v, str):
+        return f"\"{v}\""
+    elif isinstance(v, bool):
+        return str(v).lower()
+    elif isinstance(v, list):
+        return f"[{', '.join([process_data(i) for i in v])}]"
+    elif isinstance(v, dict):
+        return f"{"{"}{", ".join([f"{k} = {process_data(v)}" for k,v in v.items()])}{"}"}"
+    else:
+        return str(v)
+
+def toml_encode(data: dict[str, Any]) -> str:
+    queue: list[tuple[str, dict[str, Any]]] = [(".", data)]
+    result = ""
+    while len(queue) > 0:
+        t = queue.pop(0)
+        if t[0] != ".": result += f"[{t[0][1:-1]}]\n"
+        for k,v in t[1].items():
+            if isinstance(v, dict):
+                queue.append((t[0]+k+".",v))
+            else:
+                result += f"{k} = {process_data(v)}\n"
+    return result
 
 args = sys.argv[1:]
 
-project_toml_path = "project.godotw.toml"
+if "--local" in args:
+    management_dir = Path("./.godotw")    
+else:
+    management_dir = Path.home().joinpath(".godotw")
 
-with open(project_toml_path, "rb") as f:
-    project_toml = tomllib.load(f)
+management_dir.mkdir(parents=True, exist_ok=True)
+
+project_toml_path = "project.godotw.toml"
+management_toml_path = management_dir.joinpath("godotw.toml")
+project_godot_path = "project.godot"
+
+if os.path.exists(management_toml_path):
+    with open(management_toml_path, "rb") as f:
+        management_toml = tomllib.load(f)
+else:
+    management_toml = {
+        "godot": {
+            "repositories": []
+        }
+    }
+    with open(management_toml_path, "w") as f:
+        f.write(toml_encode(management_toml))
+
+if os.path.exists(project_toml_path):
+    with open(project_toml_path, "rb") as f:
+        project_toml = tomllib.load(f)
+else:
+    if os.path.exists(project_godot_path):
+        project_toml = {}
+        with open(project_godot_path, "r") as f:
+            project_godot = f.read()
+            project_toml = {
+                "godot": {
+                    "version": re.search(r"config/features=PackedStringArray\(\"(\d+\.\d+)\"", project_godot).group(1),
+                    "mono-required": "[dotnet]" in project_godot,
+                    "release-status": "stable"
+                }
+            }
+        with open(project_toml_path, "w") as f:
+            f.write(toml_encode(project_toml))
+        print(f"Created project.godotw.toml from project.godot")
+    else:
+        print(f"No project.godotw.toml found and no project.godot found.")
+        sys.exit(1)
+
 
 table_godot: dict[str, Any] = project_toml["godot"]
 
@@ -54,7 +121,8 @@ def get_platform_names() -> list[str]:
 
 platform_names = get_platform_names()
 
-godot_names = os.listdir(Path.home().joinpath(".godotw/godots/"))
+management_dir.joinpath("godots").mkdir(parents=True, exist_ok=True)
+godot_names = os.listdir(management_dir.joinpath("godots"))
 
 available_godots = [name for name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
 
@@ -67,7 +135,7 @@ if not available_godots:
 
         name = f"Godot_v{godot_version}-{godot_release_status}{'_mono' if is_required_mono else ''}_{platform_names[0 if not is_required_mono else -1]}"
         url = f"https://github.com/godotengine/godot/releases/download/{godot_version}-{godot_release_status}/{name}.zip"
-        dirpath = Path.home().joinpath(".godotw/godots")
+        dirpath = management_dir.joinpath("godots")
         zippath = Path(dirpath).joinpath(f"{name}.zip")
         godotpath = Path(dirpath).joinpath(f"{name}")
 
@@ -88,8 +156,8 @@ if not available_godots:
 
 chosen_godot = available_godots[-1]
 
-godot_path = Path.home().joinpath(f".godotw/godots/{chosen_godot}/{chosen_godot}.exe")
-godot_dir = Path.home().joinpath(f".godotw/godots/{chosen_godot}")
+godot_path = management_dir.joinpath(f"godots/{chosen_godot}/{chosen_godot}.exe")
+godot_dir = management_dir.joinpath(f"godots/{chosen_godot}")
 
 def setup_symlink():
     Path("./.godotw").mkdir(parents=True, exist_ok=True)
