@@ -28,7 +28,8 @@ you can use godot.bat or godot.sh
 
 general options:
 
-- [--local]: use local godot management directory (./.godotw) (default: (USERPROFILE)/.godotw)
+- [--local]: use local godot management directory (./.godotw)
+  - without this option, the management dir is ((USERPROFILE)/.godotw)
 - [--install]: install godot from github before executing
 
 commands:
