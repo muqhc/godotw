@@ -19,6 +19,12 @@ import subprocess
 import json
 import re
 
+def process_key(k: str) -> str:
+    if re.match(r"^[a-zA-Z0-9_-]+$", k):
+        return k
+    else:
+        return f"\"{k}\""
+
 def process_data(v: Any) -> str:
     if isinstance(v, str):
         return f"\"{v}\""
@@ -27,7 +33,7 @@ def process_data(v: Any) -> str:
     elif isinstance(v, list):
         return f"[{', '.join([process_data(i) for i in v])}]"
     elif isinstance(v, dict):
-        return f"{"{"}{", ".join([f"{k} = {process_data(v)}" for k,v in v.items()])}{"}"}"
+        return f"{"{"}{", ".join([f"{process_key(k)} = {process_data(v)}" for k,v in v.items()])}{"}"}"
     else:
         return str(v)
 
@@ -39,9 +45,9 @@ def toml_encode(data: dict[str, Any]) -> str:
         if t[0] != ".": result += f"[{t[0][1:-1]}]\n"
         for k,v in t[1].items():
             if isinstance(v, dict):
-                queue.append((t[0]+k+".",v))
+                queue.append((t[0]+process_key(k)+".",v))
             else:
-                result += f"{k} = {process_data(v)}\n"
+                result += f"{process_key(k)} = {process_data(v)}\n"
     return result
 
 args = sys.argv[1:]
