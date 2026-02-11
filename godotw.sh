@@ -17,9 +17,9 @@ if [ "$1" = "setup" ] && [ "$2" = "symlink" ]; then
     cd "$SCRIPT_DIR"
     sudo "$PY_CMD" "godotw.py" "$@"
 elif [ "$1" = "open" ]; then
-    "$PY_CMD" "$PYTHON_SCRIPT" -e --path .
+    "$PY_CMD" "$PYTHON_SCRIPT" -e --path . "$@"
 elif [ "$1" = "run" ]; then
-    "$PY_CMD" "$PYTHON_SCRIPT" --path .
+    "$PY_CMD" "$PYTHON_SCRIPT" --path . "$@"
 else
     "$PY_CMD" "$PYTHON_SCRIPT" "$@"
 fi

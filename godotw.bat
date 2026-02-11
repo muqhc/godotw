@@ -10,11 +10,11 @@ py godotw.py %*
 goto end
 
 :open
-py godotw.py -e --path .
+py godotw.py -e --path . %*
 goto end
 
 :run
-py godotw.py --path .
+py godotw.py --path . %*
 goto end
 
 :symlink

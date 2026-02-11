@@ -9,6 +9,7 @@ The godot godot executable is usually in the user's home directory. (.godotw/god
 """
 
 import os
+import time
 import tomllib
 import platform
 from typing import Any
@@ -126,6 +127,7 @@ default_godot_repository.mkdir(parents=True, exist_ok=True)
 repos = reversed([default_godot_repository] + [Path(i) for i in management_toml["godot"]["repositories"]])
 godot_names: list[tuple[Path,str]] = sum([[(i,j) for j in os.listdir(i)] for i in repos], [])
 
+print(godot_names, default_godot_repository)
 available_godots = [(repo, name) for repo, name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
 
 if not available_godots:
@@ -150,10 +152,10 @@ if not available_godots:
         import zipfile
 
         with zipfile.ZipFile(zippath, "r") as zip_ref:
-            zip_ref.extractall(godotpath)
+            zip_ref.extractall(godotpath if not is_required_mono else godotpath.parent)
         os.remove(zippath)
         print(f"Installed {name} in {"(USERPROFILE)/.godotw/godots" if not "--local" in args else ".godotw/godots"}.")
-        available_godots = [(repo, name) for repo, name in godot_names if os.path.isdir(repo.joinpath(name)) and name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
+        available_godots.append((dirpath, name))
     else:
         print(f"If you want install godot, please run 'godotw setup --install'")
         sys.exit(1)
