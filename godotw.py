@@ -151,10 +151,12 @@ if not available_godots:
 
         with zipfile.ZipFile(zippath, "r") as zip_ref:
             zip_ref.extractall(godotpath)
-        print(f"Installed {name}.")
+        os.remove(zippath)
+        print(f"Installed {name} in {"(USERPROFILE)/.godotw/godots" if not "--local" in args else ".godotw/godots"}.")
+        available_godots = [(repo, name) for repo, name in godot_names if os.path.isdir(repo.joinpath(name)) and name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
     else:
-        print(f"If you want install godot, please run 'godotw --install'")
-    sys.exit(1)
+        print(f"If you want install godot, please run 'godotw setup --install'")
+        sys.exit(1)
 
 chosen_godot_repo, chosen_godot = available_godots[-1]
 
@@ -188,7 +190,7 @@ if len(args) > 0 and args[0] == "setup":
         target_path: str
         if "--symlink" in args:
             setup_symlink()
-            target_path = f"./.godotw/godot/{chosen_godot}.exe"
+            target_path = f"./.godotw/godot_symbolic/{chosen_godot}.exe"
         else:
             target_path = godot_path.absolute().as_posix()
         if "--godot-tools" in args:
