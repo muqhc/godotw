@@ -17,6 +17,8 @@ import sys
 import subprocess
 import json
 
+args = sys.argv[1:]
+
 project_toml_path = "project.godotw.toml"
 
 with open(project_toml_path, "rb") as f:
@@ -31,10 +33,12 @@ godot_release_status: str = table_godot.get("release-status", "stable")
 def get_platform_names() -> list[str]:
     match platform.system():
         case "Windows":
+            if "arm" in platform.machine().lower():
+                return ["windows_arm64.exe", "windows_arm64"]
             if "64" in platform.machine():
-                return ["win64"]
+                return ["win64.exe", "win64"]
             else:
-                return ["win32"]
+                return ["win32.exe", "win32"]
         case "Linux":
             if "arm" in platform.machine().lower():
                 return ["linux.arm64","linux_arm64"]
@@ -47,6 +51,7 @@ def get_platform_names() -> list[str]:
         case _:
             raise ValueError(f"Unsupported platform: {platform.system()}")
 
+
 platform_names = get_platform_names()
 
 godot_names = os.listdir(Path.home().joinpath(".godotw/godots/"))
@@ -54,11 +59,34 @@ godot_names = os.listdir(Path.home().joinpath(".godotw/godots/"))
 available_godots = [name for name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
 
 if not available_godots:
-    raise ValueError("No available godot found")
+    print(f"No available godot found for version {godot_version} and platform {platform_names}")
+    if "--install" in args:
+        print(f"Installing godot {godot_version} from github...")
+        
+        import urllib.request
+
+        name = f"Godot_v{godot_version}-{godot_release_status}{'_mono' if is_required_mono else ''}_{platform_names[0 if not is_required_mono else -1]}"
+        url = f"https://github.com/godotengine/godot/releases/download/{godot_version}-{godot_release_status}/{name}.zip"
+        dirpath = Path.home().joinpath(".godotw/godots")
+        zippath = Path(dirpath).joinpath(f"{name}.zip")
+        godotpath = Path(dirpath).joinpath(f"{name}")
+
+        print(f"Downloading {url}...")
+        dirpath.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(url, zippath)
+
+        # unzip
+        print(f"Unzipping {name}...")
+        import zipfile
+
+        with zipfile.ZipFile(zippath, "r") as zip_ref:
+            zip_ref.extractall(godotpath)
+        print(f"Installed {name}.")
+    else:
+        print(f"If you want install godot, please run 'godotw --install'")
+    sys.exit(1)
 
 chosen_godot = available_godots[-1]
-
-args = sys.argv[1:]
 
 godot_path = Path.home().joinpath(f".godotw/godots/{chosen_godot}/{chosen_godot}.exe")
 godot_dir = Path.home().joinpath(f".godotw/godots/{chosen_godot}")
