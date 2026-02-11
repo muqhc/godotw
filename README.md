@@ -13,6 +13,17 @@ simple godot project manager for multiple godot versions.
 
 ## usage
 
+### project.godotw.toml
+
+```toml
+[godot]
+version = "4.6"             # required
+mono-required = false       # optional, default is false
+release-status = "stable"   # optional, default is "stable"
+```
+
+### commands
+
 general options:
 
 - [--install]: install godot from github before executing
