@@ -27,6 +27,8 @@ use options (`--local`, `--install`) if you need
 
 configuration files (almost `.toml`) you need will be generated when you run godotw
 
+commands of `setup` are prevent from running actual godot so you use it you need only 'setup' process with godotw
+
 ### project.godotw.toml
 
 generating this file requires `project.godot`
