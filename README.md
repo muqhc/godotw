@@ -2,6 +2,8 @@
 
 simple godot project manager handling multiple godot versions.
 
+it also works as wrapper of correct version of godot, so you can access right godot by same command.
+
 ## features
 
 - open godot project
@@ -50,11 +52,17 @@ general options:
 
 commands:
 
-- ./godotw.sh open
-- ./godotw.sh run
+- ./godotw.sh open [--install] [--local]
+- ./godotw.sh run [--install] [--local]
 - ./godotw.sh setup [--install] [--local]
 - ./godotw.sh setup vscode [--symlink] [--godot-tools]
 - ./godotw.sh setup symlink
+
+---
+
+also, godotw delegate godot executable.
+
+for example, `./godotw.sh -e --path .` also works. (add `--local` to link local .godotw)
 
 ### .godotw/godotw.toml
 

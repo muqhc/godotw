@@ -1,9 +1,9 @@
 """
-This is python script to link godot project with right version of godot godot executable,
+This is python script to link godot project with right version of godot executable,
 by reading project.godotw.toml.
-This script is almost delegation of the godot godot executable.
+This script is almost delegation of the godot executable.
 This script will be included in godot project folder.
-The godot godot executable is usually in the user's home directory. (.godotw/godots/{godot-name}/{godot-name}.exe) (.exe is for windows, it will be different for other platforms)
+The godot executable is usually in the user's home directory. (.godotw/godots/{godot-name}/{godot-name}.exe) (.exe is for windows, it will be different for other platforms)
 (platforms: win32, win64, window_arm64, linux.x86_32, linux.x86_64, linux.arm32, linux.arm64, macos.universal)
 (platforms(.net-mono-support): mono_win32, mono_win64, mono_window_arm64, mono_linux_x86_32, mono_linux_x86_64, mono_linux_arm32, mono_linux_arm64, mono_macos.universal)
 """
@@ -12,7 +12,7 @@ import os
 import time
 import tomllib
 import platform
-from typing import Any
+from typing import Any, Callable
 from pathlib import Path
 import sys
 import subprocess
@@ -104,29 +104,29 @@ godot_version: str = table_godot["version"]
 is_required_mono: bool = table_godot.get("mono-required", False)
 godot_release_status: str = table_godot.get("release-status", "stable")
 
-def get_platform_names() -> list[str]:
+def get_platform_names() -> tuple[list[str], list[Callable[[str],str]]]:
     match platform.system():
         case "Windows":
             if "arm" in platform.machine().lower():
-                return ["windows_arm64.exe", "windows_arm64"]
+                return (["windows_arm64.exe", "windows_arm64"], [(lambda x: Path(x)),(lambda x: Path(x).joinpath(x+".exe"))])
             if "64" in platform.machine():
-                return ["win64.exe", "win64"]
+                return (["win64.exe", "win64"], [(lambda x: Path(x)),(lambda x: Path(x).joinpath(x+".exe"))])
             else:
-                return ["win32.exe", "win32"]
+                return (["win32.exe", "win32"], [(lambda x: Path(x)),(lambda x: Path(x).joinpath(x+".exe"))])
         case "Linux":
             if "arm" in platform.machine().lower():
-                return ["linux.arm64","linux_arm64"]
+                return (["linux.arm64","linux_arm64"], [(lambda x: x), (lambda x: Path(x).joinpath(x.replace("linux_arm64","linux.arm64")))])
             elif "64" in platform.machine():
-                return ["linux.x86_64","linux_x86_64"]
+                return (["linux.x86_64","linux_x86_64"], [(lambda x: x), (lambda x: Path(x).joinpath(x.replace("linux_x86_64","linux.x86_64")))])
             else:
-                return ["linux.x86_32","linux_x86_32"]
+                return (["linux.x86_32","linux_x86_32"], [(lambda x: x), (lambda x: Path(x).joinpath(x.replace("linux_x86_32","linux.x86_32")))])
         case "Darwin":
-            return ["macos.universal"]
+            return (["macos.universal"], [(lambda x: "Godot.app/Contents/MacOS/Godot"), (lambda x: "Godot_mono.app/Contents/MacOS/Godot")])
         case _:
             raise ValueError(f"Unsupported platform: {platform.system()}")
 
 
-platform_names = get_platform_names()
+platform_names, platform_executable_finders = get_platform_names()
 
 default_godot_repository = management_dir.joinpath("godots")
 default_godot_repository.mkdir(parents=True, exist_ok=True)
@@ -134,7 +134,7 @@ repos = reversed([default_godot_repository] + [Path(i) for i in management_toml[
 godot_names: list[tuple[Path,str]] = sum([[(i,j) for j in os.listdir(i)] for i in repos], [])
 
 print(godot_names, default_godot_repository)
-available_godots = [(repo, name) for repo, name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
+available_godots = [(repo, name, platform_executable_finders[1 if "mono" in name else 0]) for repo, name in godot_names if name.startswith(f"Godot_v{godot_version}-{godot_release_status}") and any(platform_name in name for platform_name in platform_names) and (not is_required_mono or "mono" in name)]
 
 if not available_godots:
     print(f"No available godot found for version {godot_version} and platform {platform_names}")
@@ -158,18 +158,18 @@ if not available_godots:
         import zipfile
 
         with zipfile.ZipFile(zippath, "r") as zip_ref:
-            zip_ref.extractall(godotpath if not is_required_mono else godotpath.parent)
+            zip_ref.extractall(godotpath)
         os.remove(zippath)
         print(f"Installed {name} in {"(USERPROFILE)/.godotw/godots" if not "--local" in args else ".godotw/godots"}.")
-        available_godots.append((dirpath, name))
+        available_godots.append((dirpath, name, platform_executable_finders[1 if "mono" in name else 0]))
     else:
         print(f"If you want install godot, please run 'godotw setup --install'")
         sys.exit(1)
 
-chosen_godot_repo, chosen_godot = available_godots[-1]
+chosen_godot_repo, chosen_godot, chosen_godot_executable_finder = available_godots[-1]
 
-godot_path = chosen_godot_repo.joinpath(f"{chosen_godot}").joinpath(f"{chosen_godot}.exe")
 godot_dir = chosen_godot_repo.joinpath(f"{chosen_godot}")
+godot_path = godot_dir.joinpath(chosen_godot_executable_finder(chosen_godot))
 
 print(f"Chosen godot: {godot_path}")
 
@@ -206,5 +206,6 @@ if len(args) > 0 and args[0] == "setup":
         else:
             setup_vscode_godot_tools(target_path)
 else:
+    args = [i for i in args if i != "--local" and i != "--install"]
     subprocess.run([godot_path]+args)
 
